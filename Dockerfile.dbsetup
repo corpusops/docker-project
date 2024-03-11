@@ -1,0 +1,10 @@
+ARG BASE=corpusops/ubuntu-bare:22.04
+ARG PACKAGES=mysql-client postgresl-client busybox
+FROM $BASE as base
+ARG PACKAGES
+ENV DB_SERVICE_MODE=1
+RUN \
+    --mount=type=cache,id=cops${BASE}apt,target=/var/cache/apt \
+    --mount=type=cache,id=cops${BASE}list,target=/var/lib/apt/lists \
+    apt update -qq && apt install && apt install $PACKAGES
+ENTRYPOINT ["/bin/project_dbsetup.sh"]
