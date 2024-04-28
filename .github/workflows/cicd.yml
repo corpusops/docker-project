@@ -12,7 +12,7 @@ jobs:
           DFILE: "${{matrix.DFILE}}",
           DPATH: "${{matrix.DPATH}}",
           NGINX: "${{matrix.NGINX}}",
-          IMG_RELEASE: "${{matrix.IMG_RELEASE}}",}
+          IMG_FLAVOR: "${{matrix.IMG_FLAVOR}}",}
     steps:
       - name: Set vars
         run: |-
@@ -31,43 +31,61 @@ jobs:
           open(d, 'w').write(json.dumps(c))\";systemctl restart docker"
       - uses: actions/checkout@v3
       - name: build & release
-        run: set -ex;
-             IMGV=${IMG_RELEASE};
-             t=${IMG}:${IMGV};
-             ./refresh.sh;
-             db() { docker build --build-arg NGINX_VERSION=$(echo $IMG_RELEASE |sed -re "s/nginx-//" -e "s/nginx/latest/" ) --build-arg BUILDKIT_INLINE_CACHE="1" -t ${3} -f ${1} ${2} "${@:4}"; };
-             db ${DFILE} ${DPATH} ${t}-no-squash;docker tag ${t}-no-squash ${t};
-             if [ "x${NO_SQUASH}" = "x" ];then db ${DFILE} ${DPATH} ${t} --squash;fi;
-             if [ "x${{steps.v.outputs.releasable}}" = "xtrue" ];then for i in "" -no-squash;do docker push ${t}${i};done;fi;
+        run: |-
+          set -ex
+          ./refresh.sh
+          db() {
+            docker build \
+             --build-arg BASE="$BASE" --build-arg BASE_VERSION="$BASE_VERSION" \
+             --build-arg BUILDKIT_INLINE_CACHE="1" -t ${3} -f ${1} ${2} "${@:4}"
+          }
+          results=/tmp/result;touch $results
+          for img_flavor in ${IMG_FLAVORS-} ${IMG_FLAVOR-};do
+            BASE=$(echo $img_flavor        |sed -r -e "s/^helpers-?//g" -e "s/-.*//g" \
+                                                   -e "s/(nginx|ubuntu|centos|alpine|debian)/corpusops\/\1/g" \
+                                                   -e "s/(ubuntu|centos|alpine|debian)/\1-bare/g" \
+                                                   -e "s/^$/ubuntu/g" )
+            BASE_VERSION=$(echo $img_flavor|sed -r -e "s!^(helpers-)?(nginx|centos|ubuntu|debian|alpine)?-?!!g" \
+                                                   -e "s/^(helpers)?$/latest/g" )
+            t=${IMG}:${img_flavor}
+            if !(db ${DFILE} ${DPATH} ${t}-no-squash;docker tag ${t}-no-squash ${t});then
+              echo "$IMG $img_flavor" > $results
+            else
+              if [ "x${{steps.v.outputs.releasable}}" = "xtrue" ];then for i in "" -no-squash;do docker push ${t}${i};done;fi
+              if [ "x${NO_SQUASH}" = "x" ];then db ${DFILE} ${DPATH} ${t} --squash;fi
+            fi
+          done
+          if [ "x$(cat $results)" != "x" ];then cat $results;exit 1;fi
     strategy:
       max-parallel: 10
       fail-fast: false
       matrix:
         include:
-        - IMG_RELEASE: dbsetup
-          IMG: "corpusops/project"
-          DFILE: "Dockerfile.dbsetup"
-          DPATH: "."
-        - IMG_RELEASE: nginx
-          IMG: "corpusops/project"
-          DFILE: "Dockerfile.nginx"
-          DPATH: "."
-        - IMG_RELEASE: nginx-alpine
-          IMG: "corpusops/project"
-          DFILE: "Dockerfile.nginx"
-          DPATH: "."
-        - IMG_RELEASE: nginx-stable
-          IMG: "corpusops/project"
-          DFILE: "Dockerfile.nginx"
-          DPATH: "."
-        - IMG_RELEASE: nginx-stable-alpine
-          IMG: "corpusops/project"
-          DFILE: "Dockerfile.nginx"
-          DPATH: "."
-        - IMG_RELEASE: mailhog
-          IMG: "corpusops/project"
-          DFILE: "Dockerfile.mailhog"
-          DPATH: "."
+        - {IMG_FLAVOR: "helpers
+                        helpers-ubuntu
+                        helpers-ubuntu-jammy
+                        helpers-ubuntu-trusty helpers-ubuntu-xenial
+                        helpers-ubuntu-bionic helpers-ubuntu-focal
+                        helpers-ubuntu-22.04 helpers-ubuntu-20.04
+                        helpers-ubuntu-18.04 helpers-ubuntu-16.04
+                        helpers-ubuntu-14.04",
+           IMG: "corpusops/project", DFILE: "Dockerfile.helpers",  DPATH: "."}
+        - {IMG_FLAVOR: "helpers-alpine helpers-alpine-3",
+           IMG: "corpusops/project", DFILE: "Dockerfile.helpers",  DPATH: "."}
+        - {IMG_FLAVOR: "helpers-centos-stream  helpers-centos
+                        helpers-centos-stream9 helpers-centos-9
+                        helpers-centos-stream8 helpers-centos-8
+                        helpers-centos-7",
+           IMG: "corpusops/project", DFILE: "Dockerfile.helpers",  DPATH: "."}
+        - {IMG_FLAVOR: "helpers-debian helpers-debian-11
+                        helpers-debian-10 helpers-debian-9",
+           IMG: "corpusops/project", DFILE: "Dockerfile.helpers",  DPATH: "."}
+        - {IMG_FLAVOR: "dbsetup",
+           IMG: "corpusops/project", DFILE: "Dockerfile.dbsetup",  DPATH: "."}
+        - {IMG_FLAVOR: "nginx nginx-alpine nginx-stable nginx-stable-alpine",
+           IMG: "corpusops/project", DFILE: "Dockerfile.nginx",    DPATH: "."}
+        - {IMG_FLAVOR: "mailhog",
+           IMG: "corpusops/project", DFILE: "Dockerfile.mailhog",  DPATH: "."}
 on:
   push:
   workflow_dispatch:

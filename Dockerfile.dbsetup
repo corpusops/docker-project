@@ -1,6 +1,6 @@
-ARG BASE=corpusops/ubuntu-bare:22.04
+ARG DBSETUP_BASE=corpusops/ubuntu-bare:22.04
 ARG PACKAGES=mysql-client postgresl-client busybox
-FROM $BASE as base
+FROM $DBSETUP_BASE as base
 ARG PACKAGES
 ENV DB_SERVICE_MODE=1
 RUN \

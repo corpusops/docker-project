@@ -1,5 +1,5 @@
-ARG BASE=corpusops/mailhog:latest
-FROM $BASE as base
+ARG MAILHOG_BASE=corpusops/mailhog:latest
+FROM $MAILHOG_BASE as base
 ADD docker-images/rootfs/bin/ /bin/
 USER root
 ENTRYPOINT ["/bin/project_mailhog.sh"]

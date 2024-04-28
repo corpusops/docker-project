@@ -1,0 +1,6 @@
+ARG BASE_VERSION=latest
+ARG BASE=corpusops/ubuntu
+FROM $BASE:$BASE_VERSION as base
+ADD docker-images/rootfs/bin/ /bin/
+USER root
+ENTRYPOINT ["/bin/install_cops_helpers.sh"]
