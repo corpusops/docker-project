@@ -2,5 +2,7 @@ ARG NGINX_VERSION=stable-alpine
 ARG BASE=corpusops/nginx:$NGINX_VERSION
 FROM $BASE as base
 ADD docker-images/rootfs/bin/ /bin/
+ARG SUPERVISORD_CONFIGS="rsyslog cron nginx"
+ENV SUPERVISORD_CONFIGS=$SUPERVISORD_CONFIGS
 USER root
-ENTRYPOINT ["/bin/project_nginx.sh"]
+ENTRYPOINT ["/bin/supervisord.sh"]
