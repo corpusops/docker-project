@@ -7,7 +7,7 @@ env:
   RELEASABLE_BRANCHES: "^(refs/heads/)?(master|main|workflows)$"
 jobs:
   r:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env: {IMG: "${{matrix.IMG}}",
           DFILE: "${{matrix.DFILE}}",
           DPATH: "${{matrix.DPATH}}",
@@ -26,7 +26,7 @@ jobs:
         with: {username: "${{ secrets.DOCKER_HUB_USERNAME }}", password: "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}"}
       - name: Activate docker experimental
         run: |-
-          sudo bash -exc "service docker stop;python -c \"d='/etc/docker/daemon.json';\
+          sudo bash -exc "if [ ! -e /etc/docker/daemon.json ];then mkdir /etc/docker||true;echo '{}' > /etc/docker/daemon.json;fi;service docker stop;python -c \"d='/etc/docker/daemon.json';\
           import json;c=json.load(open(d));c['experimental']=True;\
           open(d, 'w').write(json.dumps(c))\";systemctl restart docker"
       - uses: actions/checkout@v3
@@ -66,7 +66,7 @@ jobs:
                         helpers-ubuntu-jammy
                         helpers-ubuntu-trusty helpers-ubuntu-xenial
                         helpers-ubuntu-bionic helpers-ubuntu-focal
-                        helpers-ubuntu-22.04 helpers-ubuntu-20.04
+                        helpers-ubuntu-22.04 helpers-ubuntu-24.04
                         helpers-ubuntu-18.04 helpers-ubuntu-16.04
                         helpers-ubuntu-14.04",
            IMG: "corpusops/project", DFILE: "Dockerfile.helpers",  DPATH: "."}
